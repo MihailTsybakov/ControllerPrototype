@@ -97,7 +97,8 @@ void KSPSolveTask::task()
 	loc_rows = localSize(matrix_size, rank, size);
 	loc_ia.resize(loc_rows + 1);
 	loc_ia[0] = 0;
-
+	
+	MPI_Barrier(communicator);
 	auto scatter_start = cr::system_clock::now();
 
 	MPI_Scatterv(ia.data(), loc_ia_sizes.data(), loc_ia_starts.data(), MPI_INT,
@@ -114,7 +115,9 @@ void KSPSolveTask::task()
 	MPI_Scatterv(a.data(), loc_ja_sizes.data(), loc_ja_starts.data(), MPI_DOUBLE,
 		loc_a.data(), loc_num, MPI_DOUBLE, 0, communicator);
 
+	MPI_Barrier(communicator);
 	auto scatter_end = cr::system_clock::now();
+
 	int time = cr::duration_cast<cr::milliseconds>(scatter_end - scatter_start).count();
 	if (!rank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
 
