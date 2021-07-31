@@ -22,6 +22,7 @@ int PETScCGTest::test()
 
 	const int scatter_time = cr::duration_cast<cr::milliseconds>(scatter_end - scatter_start).count();
 	const int time = cr::duration_cast<cr::milliseconds>(end - start).count();
+	//    Now time is measured in task...
 	//cout << "Scatter time == " << scatter_time << " ms" << endl; // ~~~
 	//cout << "Solve time   == " << time << " ms" << endl;
 	cout << "Error code   == " << err << std::endl;
