@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SLEPCTEST_SOLVERS_TESTS
-#define SLEPCTEST_SOLVERS_TESTS
+#ifndef SOLVERS_TESTS
+#define SOLVERS_TESTS
 
 #include <mkl.h>
 #include <omp.h>
@@ -14,7 +14,7 @@
 #include <cassert>
 
 //~~
-#include "ProcessController.h"
+#include "processcontroller.h"
 
 using namespace std;
 namespace cr = std::chrono;
@@ -50,7 +50,7 @@ protected:
 	void read_matrix_file(const std::string& file_name,
 		const MatrixFileFormat file_format,
 		std::vector<MKL_INT>& ia, std::vector<MKL_INT>& ja,
-		std::vector<double>& A, MKL_INT& matrix_size, MKL_INT& nnz);
+		std::vector<double>& A, MKL_INT& matrixSize, MKL_INT& nnz);
 };
 
 class LAESTest : public SolverTest {
@@ -62,14 +62,4 @@ protected:
 	virtual int testSpecific() = 0;
 };
 
-class PETScCGTest : public LAESTest {
-protected:
-	string petscfilename;
-	cr::time_point<cr::system_clock> scatter_start, scatter_end;
-
-	int test();
-	int testSpecific();
-};
-
-
-#endif
+#endif // SOLVERS_TESTS

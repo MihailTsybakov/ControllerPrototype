@@ -1,6 +1,6 @@
 #include "solvertest.h"
+#include "petsccgtest.h"
 
-#include <process.h>
 #include <petscksp.h>
 
 using namespace std;
@@ -33,128 +33,124 @@ int localSize(int global_size, int mpi_rank, int mpi_size)
 	return global_size / mpi_size + ((mpi_rank < (global_size % mpi_size)) ? 1 : 0);
 }
 
-void KSPSolveTask::syncMSize()
+void KSPSolveTask::syncMatrixSize()
 {
-	MPI_Bcast(&matrix_size, 1, MPI_INT, 0, communicator);
+	MPI_Bcast(&matrixSize, 1, MPI_INT, 0, communicator);
 }
 
 void KSPSolveTask::prepareMarkup()
 {
-	loc_ia_sizes.resize(size);
-	loc_ia_starts.resize(size);
-	loc_ja_sizes.resize(size);
-	loc_ja_starts.resize(size);
+	locIASizes.resize(MPISize);
+	locIAStarts.resize(MPISize);
+	locJASizes.resize(MPISize);
+	locJAStarts.resize(MPISize);
 }
 
 void KSPSolveTask::syncMarkup()
 {
-	MPI_Bcast(&(loc_ia_sizes.at(0)), size, MPI_INT, 0, communicator);
-	MPI_Bcast(&(loc_ia_starts.at(0)), size, MPI_INT, 0, communicator);
-	MPI_Bcast(&(loc_ja_sizes.at(0)), size, MPI_INT, 0, communicator);
-	MPI_Bcast(&(loc_ja_starts.at(0)), size, MPI_INT, 0, communicator);
+	MPI_Bcast(&(locIASizes.at(0)), MPISize, MPI_INT, 0, communicator);
+	MPI_Bcast(&(locIAStarts.at(0)), MPISize, MPI_INT, 0, communicator);
+	MPI_Bcast(&(locJASizes.at(0)), MPISize, MPI_INT, 0, communicator);
+	MPI_Bcast(&(locJAStarts.at(0)), MPISize, MPI_INT, 0, communicator);
 }
 
 void KSPSolveTask::printContext() const
 {
-	std::cout << " Rank [" << rank << "]: Matrix size: " << matrix_size << std::endl;
-	std::cout << " Rank [" << rank << "]: loc_num: " << loc_num << std::endl;
-	std::cout << " Rank [" << rank << "]: loc_rows: " << loc_rows << std::endl;
+	std::cout << " Rank [" << MPIRank << "]: Matrix size: " << matrixSize << std::endl;
+	std::cout << " Rank [" << MPIRank << "]: locNum: " << locNum << std::endl;
+	std::cout << " Rank [" << MPIRank << "]: locRows: " << locRows << std::endl;
 
-	std::cout << " Rank [" << rank << "]: loc_ia_sizes: ";
-	for (int i = 0; i < size; ++i) std::cout << loc_ia_sizes[i] << " ";
+	std::cout << " Rank [" << MPIRank << "]: locIASizes: ";
+	for (int i = 0; i < MPISize; ++i) std::cout << locIASizes[i] << " ";
 	std::cout << std::endl;
 
-	std::cout << " Rank [" << rank << "]: loc_ja_sizes: ";
-	for (int i = 0; i < size; ++i) std::cout << loc_ja_sizes[i] << " ";
+	std::cout << " Rank [" << MPIRank << "]: locJASizes: ";
+	for (int i = 0; i < MPISize; ++i) std::cout << locJASizes[i] << " ";
 	std::cout << std::endl;
 
-	std::cout << " Rank [" << rank << "]: loc_ja: ";
-	for (int i = 0; i < loc_num; ++i) std::cout << loc_ja[i] << " ";
+	std::cout << " Rank [" << MPIRank << "]: locJA: ";
+	for (int i = 0; i < locNum; ++i) std::cout << locJA[i] << " ";
 	std::cout << std::endl;
 
-	std::cout << " Rank [" << rank << "]: loc_ia: ";
-	for (int i = 0; i < loc_rows; ++i) std::cout << loc_ia[i] << " ";
+	std::cout << " Rank [" << MPIRank << "]: locIA: ";
+	for (int i = 0; i < locRows; ++i) std::cout << locIA[i] << " ";
 	std::cout << std::endl;
 }
 
 void KSPSolveTask::task()
 {
 	MPI_Barrier(communicator);
-	MPI_Comm_rank(communicator, &rank);
-	MPI_Comm_size(communicator, &size);
+  
+  ProcessController* mpiController = ProcessController::getInstance();
+  MPIRank = mpiController->MPIRank();
+  MPISize = mpiController->MPISize();
+  communicator = mpiController->getCommunicator();
 
-	// Synchronizing matrix size
-	syncMSize();
-
-	// Resizing markup vectors
-	if (rank) prepareMarkup();
-
-	// Synchronizing markup
-	syncMarkup();
+	syncMatrixSize();
 	
 	MPI_Barrier(communicator);
 
 	// Scattering Ia:
-	loc_rows = localSize(matrix_size, rank, size);
-	loc_ia.resize(loc_rows + 1);
-	loc_ia[0] = 0;
+	locRows = localSize(matrixSize, MPIRank, MPISize);
+	locIA.resize(locRows + 1);
+	locIA[0] = 0;
 	
 	MPI_Barrier(communicator);
 	auto scatter_start = cr::system_clock::now();
 
-	MPI_Scatterv(ia.data(), loc_ia_sizes.data(), loc_ia_starts.data(), MPI_INT,
-		loc_ia.data() + 1, loc_rows, MPI_INT, 0, communicator);
+	MPI_Scatterv(ia.data(), locIASizes.data(), locIAStarts.data(), MPI_INT,
+		locIA.data() + 1, locRows, MPI_INT, 0, communicator);
 
 	// Scattering Ja:
-	loc_num = loc_ia[loc_ia.size() - 1];
-	loc_ja.resize(loc_num);
-	MPI_Scatterv(ja.data(), loc_ja_sizes.data(), loc_ja_starts.data(), MPI_INT,
-		loc_ja.data(), loc_num, MPI_INT, 0, communicator);
+	locNum = locIA[locIA.size() - 1];
+	locJA.resize(locNum);
+	MPI_Scatterv(ja.data(), locJASizes.data(), locJAStarts.data(), MPI_INT,
+		locJA.data(), locNum, MPI_INT, 0, communicator);
 	
 	// Scattering A:
-	loc_a.resize(loc_num);
-	MPI_Scatterv(a.data(), loc_ja_sizes.data(), loc_ja_starts.data(), MPI_DOUBLE,
-		loc_a.data(), loc_num, MPI_DOUBLE, 0, communicator);
+	locA.resize(locNum);
+	MPI_Scatterv(a.data(), locJASizes.data(), locJAStarts.data(), MPI_DOUBLE,
+		locA.data(), locNum, MPI_DOUBLE, 0, communicator);
 
 	MPI_Barrier(communicator);
 	auto scatter_end = cr::system_clock::now();
 
 	int time = cr::duration_cast<cr::milliseconds>(scatter_end - scatter_start).count();
-	if (!rank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
+	if (!MPIRank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
 
 	// Converting data
-	PetscMalloc(loc_ia.size() * sizeof(PetscInt), &petsc_loc_ia);
-	PetscMalloc(loc_ja.size() * sizeof(PetscInt), &petsc_loc_ja);
-	PetscMalloc(loc_a.size() * sizeof(PetscScalar), &petsc_loc_a);
-	for (size_t i = 0; i < loc_ia.size(); ++i) petsc_loc_ia[i] = loc_ia[i];
-	for (size_t i = 0; i < loc_ja.size(); ++i) petsc_loc_ja[i] = loc_ja[i];
-	for (size_t i = 0; i < loc_a.size(); ++i) petsc_loc_a[i] = loc_a[i];
+	PetscMalloc(locIA.size() * sizeof(PetscInt), &petscLocIA);
+	PetscMalloc(locJA.size() * sizeof(PetscInt), &petscLocJA);
+	PetscMalloc(locA.size() * sizeof(PetscScalar), &petscLocA);
+	for (size_t i = 0; i < locIA.size(); ++i) petscLocIA[i] = locIA[i];
+	for (size_t i = 0; i < locJA.size(); ++i) petscLocJA[i] = locJA[i];
+	for (size_t i = 0; i < locA.size(); ++i) petscLocA[i] = locA[i];
 
-	MatCreateMPIAIJWithArrays(communicator, loc_rows, PETSC_DECIDE,
-		PETSC_DETERMINE, matrix_size, petsc_loc_ia, petsc_loc_ja,
-		petsc_loc_a, &A);
+	MatCreateMPIAIJWithArrays(communicator, locRows, PETSC_DECIDE,
+		PETSC_DETERMINE, matrixSize, petscLocIA, petscLocJA,
+		petscLocA, &A);
 
-	PetscFree(petsc_loc_a);
-	PetscFree(petsc_loc_ia);
-	PetscFree(petsc_loc_ja);
+	PetscFree(petscLocA);
+	PetscFree(petscLocIA);
+	PetscFree(petscLocJA);
 
 	MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
 	MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
 
 	MatCreateVecs(A, &b, NULL);
 	VecDuplicate(b, &result);
-	VecDuplicate(b, &ref_result);
+	VecDuplicate(b, &refResult);
 	VecSet(result, 0.0);
-	VecSet(ref_result, 1.0);
-	MatMult(A, ref_result, b);
+	VecSet(refResult, 1.0);
+	MatMult(A, refResult, b);
 
 	KSPCreate(communicator, &ksp);
 	KSPGetPC(ksp, &pc);
 	PCSetType(pc, PCJACOBI);
 	KSPMonitorSet(ksp, MyKSPMonitor, NULL, 0);
 	KSPSetOperators(ksp, A, A);
-	//KSPSetType(ksp, KSPCG);
-	KSPSetType(ksp, KSPGMRES);
+	KSPSetType(ksp, KSPCG);
+//	KSPSetType(ksp, KSPGMRES);
 	KSPSetTolerances(ksp, 1e-8, PETSC_DEFAULT,
 		PETSC_DEFAULT, 1'000);
 	KSPSetFromOptions(ksp);
@@ -169,7 +165,7 @@ void KSPSolveTask::task()
 	auto solve_end = cr::system_clock::now();
 	time = cr::duration_cast<cr::milliseconds>(solve_end - solve_start).count();
 
-	if (!rank) std::cout << " Solve elapsed: ~" << time << " ms" << std::endl;
+	if (!MPIRank) std::cout << " Solve elapsed: ~" << time << " ms" << std::endl;
 
 	// Convergence check
 	KSPConvergedReason reason;
@@ -184,12 +180,12 @@ void KSPSolveTask::task()
 		PetscScalar res_norm_;
 		KSPGetResidualNorm(ksp, &res_norm_);
 		iterations = its;
-		res_norm = res_norm_;
+		resNorm = res_norm_;
 	}
 
 	KSPDestroy(&ksp);
 	MatDestroy(&A);
-	VecDestroy(&ref_result);
+	VecDestroy(&refResult);
 	VecDestroy(&result);
 	VecDestroy(&b);
 }
@@ -204,39 +200,39 @@ int PETScCGTest::testSpecific()
 	solveTask->a = a;
 	solveTask->ia = ia;
 	solveTask->ja = ja;
-	solveTask->matrix_size = sizea;
+	solveTask->matrixSize = sizea;
 
-	solveTask->loc_ia_sizes.resize(pc->size());
-	solveTask->loc_ja_sizes.resize(pc->size());
-	solveTask->loc_ia_starts.resize(pc->size());
-	solveTask->loc_ja_starts.resize(pc->size());
+	solveTask->locIASizes.resize(pc->MPISize());
+	solveTask->locJASizes.resize(pc->MPISize());
+	solveTask->locIAStarts.resize(pc->MPISize());
+	solveTask->locJAStarts.resize(pc->MPISize());
 
 	// Calculating IA markup
-	solveTask->loc_ia_sizes[0] = localSize(sizea, 0, pc->size());
-	solveTask->loc_ia_starts[0] = 1;
+	solveTask->locIASizes[0] = localSize(sizea, 0, pc->MPISize());
+	solveTask->locIAStarts[0] = 1;
 
-	for (int rank = 1; rank < pc->size(); ++rank)
+	for (int MPIRank = 1; MPIRank < pc->MPISize(); ++MPIRank)
 	{
-		solveTask->loc_ia_sizes[rank] = localSize(sizea, rank, pc->size());
-		solveTask->loc_ia_starts[rank] = solveTask->loc_ia_starts[rank - 1] +solveTask->loc_ia_sizes[rank - 1];
+		solveTask->locIASizes[MPIRank] = localSize(sizea, MPIRank, pc->MPISize());
+		solveTask->locIAStarts[MPIRank] = solveTask->locIAStarts[MPIRank - 1] +solveTask->locIASizes[MPIRank - 1];
 	}
-	for (int rank = pc->size() - 1; rank >= 0; rank--)
+	for (int MPIRank = pc->MPISize() - 1; MPIRank >= 0; MPIRank--)
 	{
-		for (int i = 0; i < solveTask->loc_ia_sizes[rank]; ++i)
+		for (int i = 0; i < solveTask->locIASizes[MPIRank]; ++i)
 		{
-			solveTask->ia[solveTask->loc_ia_starts[rank] + i] -= solveTask->ia[solveTask->loc_ia_starts[rank] - 1];
+			solveTask->ia[solveTask->locIAStarts[MPIRank] + i] -= solveTask->ia[solveTask->locIAStarts[MPIRank] - 1];
 		}
 	}
 
 	// Calculating JA markup
 	int sum = 0;
-	for (int rank = 0; rank < pc->size(); ++rank)
+	for (int MPIRank = 0; MPIRank < pc->MPISize(); ++MPIRank)
 	{
 		// Number of elements is in the last local ia
-		int last_loc_ia_idx = solveTask->loc_ia_starts[rank] + solveTask->loc_ia_sizes[rank] - 1;
-		solveTask->loc_ja_sizes[rank] = solveTask->ia[last_loc_ia_idx];
-		solveTask->loc_ja_starts[rank] = sum;
-		sum +=solveTask->loc_ja_sizes[rank];
+		int last_loc_ia_idx = solveTask->locIAStarts[MPIRank] + solveTask->locIASizes[MPIRank] - 1;
+		solveTask->locJASizes[MPIRank] = solveTask->ia[last_loc_ia_idx];
+		solveTask->locJAStarts[MPIRank] = sum;
+		sum +=solveTask->locJASizes[MPIRank];
 	}
 
 	// Setting and Invoking solver:
@@ -245,9 +241,7 @@ int PETScCGTest::testSpecific()
 	end = cr::system_clock::now();
 
 	std::cout << " Iterations taken: " << solveTask->iterations << std::endl;
-	std::cout << " Residual norm: " << solveTask->res_norm << std::endl;
-
-	pc->evaluateTask(Task::Shutdown);
+	std::cout << " Residual norm: " << solveTask->resNorm << std::endl;
 
 	return 0;
 }

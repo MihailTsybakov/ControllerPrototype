@@ -17,11 +17,11 @@ void read_vector(ifstream& file, MKL_INT size, vector<T>& result)
 }
 
 template<class T>
-void read_csr_matrix_file(ifstream& file, MKL_INT& matrix_size, MKL_INT& non_zero,
+void read_csr_matrix_file(ifstream& file, MKL_INT& matrixSize, MKL_INT& non_zero,
   vector<MKL_INT>& ia, vector<MKL_INT>& ja, vector<T>& A)
 {
-  file >> matrix_size >> non_zero;
-  read_vector(file, matrix_size + 1, ia);
+  file >> matrixSize >> non_zero;
+  read_vector(file, matrixSize + 1, ia);
   read_vector(file, non_zero, ja);
   read_vector(file, non_zero, A);
 }

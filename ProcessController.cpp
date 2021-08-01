@@ -1,16 +1,17 @@
-#include "ProcessController.h"
+#include "processcontroller.h"
+#include "petsccgtest.h"
 
-int ProcessController::rank() const
+int ProcessController::MPIRank() const
 {
 	return mpiRank;
 }
 
-int ProcessController::size() const
+int ProcessController::MPISize() const
 {
 	return mpiSize;
 }
 
-MPI_Comm ProcessController::getComm() const
+MPI_Comm ProcessController::getCommunicator() const
 {
 	return communicator;
 }
@@ -22,14 +23,14 @@ ProcessController::ProcessController()
 	MPI_Comm_rank(communicator, &mpiRank);
 	MPI_Comm_size(communicator, &mpiSize);
 
-	task_map[Task::KSPSolve] = new KSPSolveTask;
-	task_map[Task::Shutdown] = new ShutdownTask;
+	tasksMap[Task::KSPSolve] = new KSPSolveTask;
+	tasksMap[Task::Shutdown] = new ShutdownTask;
 }
 
 ProcessController::~ProcessController()
 {
 	if (_instance != nullptr) delete _instance;
-	for (auto pair : task_map) delete pair.second;
+	for (auto pair : tasksMap) delete pair.second;
 }
 
 void ProcessController::evaluateTask(Task taskID)
@@ -38,13 +39,14 @@ void ProcessController::evaluateTask(Task taskID)
 	if (!mpiRank) MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
 
 	// Checking taskID
-	if (task_map.find(taskID) == task_map.end())
+	if (tasksMap.find(taskID) == tasksMap.end())
 	{
-		std::cout << " Rank [" << mpiRank << "]: Get unknown task (Integer Id = " << static_cast<int>(taskID) << "). Shutting down..." << std::endl;
-		task_map[Task::Shutdown]->task();
+		std::cout << " Rank [" << mpiRank << "]: Get unknown task (Integer Id = " 
+              << static_cast<int>(taskID) << "). Shutting down..." << std::endl;
+		tasksMap[Task::Shutdown]->task();
 	}
 	//std::cout << " Rank [" << mpiRank << "]: evaluating task " << static_cast<int>(taskID) << std::endl;
-	task_map[taskID]->task();
+	tasksMap[taskID]->task();
 }
 
 void ProcessController::waitForTask()
@@ -62,8 +64,10 @@ void ProcessController::waitForTask()
 
 ProcessTask* ProcessController::getTask(Task taskID)
 {
-	return task_map[taskID];
+	return tasksMap[taskID];
 }
+
+ProcessController* ProcessController::_instance = nullptr;
 
 ProcessController* ProcessController::getInstance()
 {

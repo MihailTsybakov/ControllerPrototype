@@ -105,12 +105,12 @@ MKL_INT mm_read_banner(FILE* f, MM_typecode* matcode);
 
 MKL_INT mm_read_mtx_crd_size(FILE* f, MKL_INT& M, MKL_INT& nz);
 
-void convert_mtx_to_csr(const MKL_INT& matrix_size, std::vector<MKL_INT>& ia);
+void convert_mtx_to_csr(const MKL_INT& matrixSize, std::vector<MKL_INT>& ia);
 
 template<class T>
 void read_matrix_file_mtx(const std::string& file_name,
   std::vector<MKL_INT>& ia, std::vector<MKL_INT>& ja, std::vector<T>& A,
-  MKL_INT& matrix_size, MKL_INT& non_zero,
+  MKL_INT& matrixSize, MKL_INT& non_zero,
   bool binary, bool matInt32 = false)
 {
   if (binary) {
@@ -134,7 +134,7 @@ void read_matrix_file_mtx(const std::string& file_name,
     return;
   }
 
-  mm_read_mtx_crd_size(f, matrix_size, non_zero);
+  mm_read_mtx_crd_size(f, matrixSize, non_zero);
 
   ia.resize(non_zero);
   ja.resize(non_zero);

@@ -8,21 +8,21 @@ using namespace std;
 void SolverTest::read_matrix_file(const std::string& file_name,
 	const MatrixFileFormat file_format,
 	std::vector<MKL_INT>& ia, std::vector<MKL_INT>& ja,
-	std::vector<double>& A, MKL_INT& matrix_size, MKL_INT& nnz)
+	std::vector<double>& A, MKL_INT& matrixSize, MKL_INT& nnz)
 {
 	// already loaded
-	if (matrix_size > 0) return;
+	if (matrixSize > 0) return;
 
 	switch (file_format) {
 	case MatrixFileFormat::CSR: {
 		ifstream A_file(file_name, ifstream::in | ifstream::binary);
 		assert(("Can't open matrix file.", A_file.is_open()));
-		TESTIO::read_csr_matrix_file(A_file, matrix_size, nnz, ia, ja, A);
+		TESTIO::read_csr_matrix_file(A_file, matrixSize, nnz, ia, ja, A);
 		break;
 	}
 	case MatrixFileFormat::MTX: {
-		MATRIXIO::read_matrix_file_mtx(file_name, ia, ja, A, matrix_size, nnz, false);
-		MATRIXIO::convert_mtx_to_csr(matrix_size, ia);
+		MATRIXIO::read_matrix_file_mtx(file_name, ia, ja, A, matrixSize, nnz, false);
+		MATRIXIO::convert_mtx_to_csr(matrixSize, ia);
 		break;
 	}
 	default: {
@@ -30,7 +30,7 @@ void SolverTest::read_matrix_file(const std::string& file_name,
 			"SolverTest::read_matrix_file");
 	}
 	}
-	cout << "Matrix size = " << matrix_size << "\nNon_zero = " << nnz << "\n";
+	cout << "Matrix size = " << matrixSize << "\nNon_zero = " << nnz << "\n";
 }
 
 int LAESTest::test()
