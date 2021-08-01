@@ -4,27 +4,37 @@
 #include <thread>
 #include <chrono>
 
-#include "ProcessController.h"
 #include "solvertest.h"
-
-ProcessController* ProcessController::_instance = nullptr;
+#include "petsccgtest.h"
 
 int main(int argc, char* argv[])
 {
 	ProcessController* pc = ProcessController::getInstance();
 
-	if (pc->rank())
+	if (pc->MPIRank())
 	{
 		pc->waitForTask();
 		return 0;
 	}
 
-	std::unique_ptr<SolverTest> test = std::make_unique<PETScCGTest>();
-	test->argc = argc;
-	test->argv = argv;
-	test->A_name = "C:\\tcybakov\\MPI_Ksp_Solver\\repository\\Testing\\TestHomoStress4k.mtx";
-	test->file_format = MatrixFileFormat::MTX;
-	test->test();
+  std::unique_ptr<SolverTest> test4k1 = std::make_unique<PETScCGTest>();
+  test4k1->A_name = "TestHomoStress4k.mtx";
+  test4k1->file_format = MatrixFileFormat::MTX;
+  test4k1->test();
+
+  std::unique_ptr<SolverTest> test4k2 = std::make_unique<PETScCGTest>();
+  test4k2->A_name = "TestHomoStress4k.mtx";
+  test4k2->file_format = MatrixFileFormat::MTX;
+  test4k2->test();
+
+/*
+  std::unique_ptr<SolverTest> test400k = std::make_unique<PETScCGTest>();
+  test400k->A_name = "TestHomoStress400k.mtx";
+  test400k->file_format = MatrixFileFormat::MTX;
+  test400k->test();
+*/
+
+  pc->evaluateTask(Task::Shutdown);
 
 	return 0;
 }

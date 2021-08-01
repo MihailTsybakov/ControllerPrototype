@@ -1,6 +1,8 @@
 #ifndef PROCESS_TASK
 #define PROCESS_TASK
 
+#include <petscksp.h>
+
 enum class Task : int
 {
 	KSPSolve = 1,
@@ -14,5 +16,15 @@ public:
 	virtual void task() = 0;
 	virtual ~ProcessTask(){};
 };
+
+class ShutdownTask : public ProcessTask
+{
+public:
+  void task() override
+  {
+    PetscFinalize();
+  }
+};
+
 
 #endif//PROCESS_TASK

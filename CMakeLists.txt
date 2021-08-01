@@ -5,14 +5,15 @@ project(ControllerPrototype)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 
 set(ControllerPrototype_H 
-	ProcessTask.h
-	ProcessController.h
+	processtask.h
+	processcontroller.h
 	solvertest.h
+	petsccgtest.h
 )
 
 set(ControllerPrototype_SRC 
 	main.cpp
-	ProcessController.cpp
+	processcontroller.cpp
 	solvertest.cpp
 	petsccgtest.cpp
 )
