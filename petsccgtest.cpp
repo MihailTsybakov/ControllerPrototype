@@ -38,22 +38,6 @@ void KSPSolveTask::syncMatrixSize()
 	MPI_Bcast(&matrixSize, 1, MPI_INT, 0, communicator);
 }
 
-void KSPSolveTask::prepareMarkup()
-{
-	locIASizes.resize(MPISize);
-	locIAStarts.resize(MPISize);
-	locJASizes.resize(MPISize);
-	locJAStarts.resize(MPISize);
-}
-
-void KSPSolveTask::syncMarkup()
-{
-	MPI_Bcast(&(locIASizes.at(0)), MPISize, MPI_INT, 0, communicator);
-	MPI_Bcast(&(locIAStarts.at(0)), MPISize, MPI_INT, 0, communicator);
-	MPI_Bcast(&(locJASizes.at(0)), MPISize, MPI_INT, 0, communicator);
-	MPI_Bcast(&(locJAStarts.at(0)), MPISize, MPI_INT, 0, communicator);
-}
-
 void KSPSolveTask::printContext() const
 {
 	std::cout << " Rank [" << MPIRank << "]: Matrix size: " << matrixSize << std::endl;

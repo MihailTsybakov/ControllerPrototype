@@ -22,10 +22,6 @@ public:
   void task() override;
   /// Synchronizes Matrix sizes between processes
   void syncMatrixSize();
-  /// Allocates memory for ia/ja/a markup before synchronizing
-  void prepareMarkup();
-  /// Synchronizes markup
-  void syncMarkup();
   /// Check print
   void printContext() const;
 
