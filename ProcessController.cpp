@@ -64,14 +64,21 @@ void ProcessController::evaluateTask(Task taskID)
 
 void ProcessController::waitForTask()
 {
-	bool finishFlag = false;
-	while (!finishFlag)
+	bool finish_flag = false;
+	while (!finish_flag)
 	{
 		int taskID;
 		MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
 
-		if (taskID == -1) finishFlag = true;
-		evaluateTask(static_cast<Task>(taskID));
+		if (taskID == -1) finish_flag = true;
+		try {
+			evaluateTask(static_cast<Task>(taskID));
+		}
+		catch (const std::exception& exc)
+		{
+			tasks_map[Task::Shutdown]->task();
+			finish_flag = true;
+		}
 	}
 }
 
