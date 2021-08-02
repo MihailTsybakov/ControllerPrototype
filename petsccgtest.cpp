@@ -174,6 +174,8 @@ void KSPSolveTask::task()
 	ierr = VecDestroy(&ref_result);
 	ierr = VecDestroy(&result);
 	ierr = VecDestroy(&b);
+
+	if (ierr != 0) throw ProcessTaskException("KSP Solving failed.", ierr);
 }
 
 int PETScCGTest::testSpecific()
