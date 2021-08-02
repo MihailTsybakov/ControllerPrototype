@@ -13,7 +13,13 @@ int main(int argc, char* argv[])
 
 	if (pc->MPIRank())
 	{
-		pc->waitForTask();
+		try {
+			pc->waitForTask();
+		}
+		catch (const std::exception& exc)
+		{
+			std::cout << "Helper process caught an exception: \"" << exc.what() << "\"." << std::endl;
+		}
 		return 0;
 	}
 
@@ -21,18 +27,6 @@ int main(int argc, char* argv[])
 	test4k1->A_name = "TestHomoStress4k.mtx";
 	test4k1->file_format = MatrixFileFormat::MTX;
 	test4k1->test();
-
-  /*std::unique_ptr<SolverTest> test4k2 = std::make_unique<PETScCGTest>();
-  test4k2->A_name = "TestHomoStress4k.mtx";
-  test4k2->file_format = MatrixFileFormat::MTX;
-  test4k2->test();*/
-
-/*
-  std::unique_ptr<SolverTest> test400k = std::make_unique<PETScCGTest>();
-  test400k->A_name = "TestHomoStress400k.mtx";
-  test400k->file_format = MatrixFileFormat::MTX;
-  test400k->test();
-*/
 
 	pc->evaluateTask(Task::Shutdown);
 
