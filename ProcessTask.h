@@ -24,7 +24,8 @@ public:
   void task() override
   {
 	  PetscErrorCode ierr = PetscFinalize(); //CHKERRQ(ierr);
-	  if (ierr != 0) throw ProcessTaskException("Error occured in ShutdownTask", ierr);
+	  ierr = -1;
+	  if (ierr != 0) throw ProcessTaskException("Shutdown Error", ierr);
   }
 };
 

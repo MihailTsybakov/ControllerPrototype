@@ -63,7 +63,7 @@ void KSPSolveTask::printContext() const
 
 void KSPSolveTask::task()
 {
-	throw ProcessTaskException("Test exception");
+	//throw ProcessTaskException("Test exception");
 	PetscErrorCode ierr;
 	ierr = MPI_Barrier(communicator);
   
@@ -225,14 +225,9 @@ int PETScCGTest::testSpecific()
 	}
 
 	// Setting and Invoking solver:
-	try {
-		pc->evaluateTask(Task::KSPSolve);
-	}
-	catch (const std::exception& exc)
-	{
-		std::cout << exc.what() << std::endl;
-		return -1;
-	}
+
+	pc->evaluateTask(Task::KSPSolve);
+
 	
 
 	std::cout << " Iterations taken: " << solveTask->iterations << std::endl;
