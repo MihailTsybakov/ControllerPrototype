@@ -14,14 +14,14 @@ class ProcessTask
 {
 public:
 	ProcessTask() {};
-	virtual void task() = 0;
+	virtual int task() = 0;
 	virtual ~ProcessTask(){};
 };
 
 class ShutdownTask : public ProcessTask
 {
 public:
-  void task() override
+  int task() override
   {
 	  PetscErrorCode ierr = PetscFinalize(); 
 	  if (ierr != 0) throw ShutdownException("Shutdown Error", ierr);
