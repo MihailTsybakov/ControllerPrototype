@@ -10,8 +10,11 @@ private:
 	std::string error_msg;
 	int error_code;
 public:
-	ProcessControllerException(std::string error_message, int err_code) : error_msg(error_message), error_code(err_code),
-																			std::runtime_error(error_message){}
+	ProcessControllerException(std::string error_message, int err_code) : std::runtime_error(error_message)
+	{
+		error_msg = error_message;
+		error_code = err_code;
+	}
 	int errCode() const noexcept { return error_code; }
 	const char* what() const noexcept override { return error_msg.c_str(); }
 };
@@ -22,8 +25,11 @@ private:
 	std::string error_msg;
 	int error_code;
 public:
-	ProcessTaskException(std::string error_message, int err_code) : error_msg(error_message), error_code(err_code),
-																		std::runtime_error(error_message) {}
+	ProcessTaskException(std::string error_message, int err_code) : std::runtime_error(error_message)
+	{
+		error_msg = error_message;
+		error_code = err_code;
+	}
 	int errCode() const noexcept { return error_code; }
 	const char* what() const noexcept override { return error_msg.c_str(); }
 };
