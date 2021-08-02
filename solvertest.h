@@ -14,7 +14,7 @@
 #include <cassert>
 
 //~~
-#include "processcontroller.h"
+#include "ProcessController.h"
 
 using namespace std;
 namespace cr = std::chrono;

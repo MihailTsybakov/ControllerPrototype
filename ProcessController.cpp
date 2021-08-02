@@ -3,12 +3,12 @@
 
 int ProcessController::MPIRank() const
 {
-	return mpiRank;
+	return MPI_rank;
 }
 
 int ProcessController::MPISize() const
 {
-	return mpiSize;
+	return MPI_Size;
 }
 
 MPI_Comm ProcessController::getCommunicator() const
@@ -20,33 +20,33 @@ ProcessController::ProcessController()
 {
 	communicator = MPI_COMM_WORLD;
 	PetscInitialize(0, nullptr, (char*)0, (char*)0);
-	MPI_Comm_rank(communicator, &mpiRank);
-	MPI_Comm_size(communicator, &mpiSize);
+	MPI_Comm_rank(communicator, &MPI_rank);
+	MPI_Comm_size(communicator, &MPI_Size);
 
-	tasksMap[Task::KSPSolve] = new KSPSolveTask;
-	tasksMap[Task::Shutdown] = new ShutdownTask;
+	tasks_map[Task::KSPSolve] = new KSPSolveTask;
+	tasks_map[Task::Shutdown] = new ShutdownTask;
 }
 
 ProcessController::~ProcessController()
 {
 	if (_instance != nullptr) delete _instance;
-	for (auto pair : tasksMap) delete pair.second;
+	for (auto pair : tasks_map) delete pair.second;
 }
 
 void ProcessController::evaluateTask(Task taskID)
 {
 	// Sending command to helper processes
-	if (!mpiRank) MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
+	if (!MPI_rank) MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
 
 	// Checking taskID
-	if (tasksMap.find(taskID) == tasksMap.end())
+	if (tasks_map.find(taskID) == tasks_map.end())
 	{
-		std::cout << " Rank [" << mpiRank << "]: Get unknown task (Integer Id = " 
+		std::cout << " Rank [" << MPI_rank << "]: Get unknown task (Integer Id = " 
               << static_cast<int>(taskID) << "). Shutting down..." << std::endl;
-		tasksMap[Task::Shutdown]->task();
+		tasks_map[Task::Shutdown]->task();
 	}
 	//std::cout << " Rank [" << mpiRank << "]: evaluating task " << static_cast<int>(taskID) << std::endl;
-	tasksMap[taskID]->task();
+	tasks_map[taskID]->task();
 }
 
 void ProcessController::waitForTask()
@@ -64,7 +64,7 @@ void ProcessController::waitForTask()
 
 ProcessTask* ProcessController::getTask(Task taskID)
 {
-	return tasksMap[taskID];
+	return tasks_map[taskID];
 }
 
 ProcessController* ProcessController::_instance = nullptr;

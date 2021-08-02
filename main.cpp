@@ -17,15 +17,15 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-  std::unique_ptr<SolverTest> test4k1 = std::make_unique<PETScCGTest>();
-  test4k1->A_name = "TestHomoStress4k.mtx";
-  test4k1->file_format = MatrixFileFormat::MTX;
-  test4k1->test();
+	std::unique_ptr<SolverTest> test4k1 = std::make_unique<PETScCGTest>();
+	test4k1->A_name = "TestHomoStress4k.mtx";
+	test4k1->file_format = MatrixFileFormat::MTX;
+	test4k1->test();
 
-  std::unique_ptr<SolverTest> test4k2 = std::make_unique<PETScCGTest>();
+  /*std::unique_ptr<SolverTest> test4k2 = std::make_unique<PETScCGTest>();
   test4k2->A_name = "TestHomoStress4k.mtx";
   test4k2->file_format = MatrixFileFormat::MTX;
-  test4k2->test();
+  test4k2->test();*/
 
 /*
   std::unique_ptr<SolverTest> test400k = std::make_unique<PETScCGTest>();
@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
   test400k->test();
 */
 
-  pc->evaluateTask(Task::Shutdown);
+	pc->evaluateTask(Task::Shutdown);
 
 	return 0;
 }
