@@ -19,6 +19,7 @@ int main(int argc, char* argv[])
 		catch (const std::exception& exc)
 		{
 			std::cout << "Helper process caught an exception: \"" << exc.what() << "\"." << std::endl;
+			PetscFinalize();
 		}
 		return 0;
 	}
