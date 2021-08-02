@@ -49,17 +49,11 @@ void ProcessController::evaluateTask(Task taskID)
 	{
 		tasks_map[taskID]->task();
 	}
-	catch (const ShutdownException exc)
-	{
-		if (!MPI_rank) std::cout << "ProcessController caught shutdown exception: \"" << exc.what() << "\"." << std::endl;
-		if (!MPI_rank) std::cout << "Calling MPI_Abort()." << std::endl;
-		MPI_Abort(communicator, MPI_ERR_OTHER);
-		throw ProcessControllerException("Error occured in shutdown task.");
-	}
 	catch (const std::exception& exc)
 	{
-		if (!MPI_rank) std::cout << "ProcessController caught an exception: \"" << exc.what() << "\"." << std::endl;
-		throw ProcessControllerException("Error occured in task.");
+		std::cout << " Rank [" << MPI_rank << "]: caught an exception: \"" << exc.what() << "\"." << std::endl;
+		std::cout << " Rank [" << MPI_rank << "]: Calling MPI_Abort()." << std::endl;
+		MPI_Abort(communicator, MPI_ERR_OTHER);
 	}
 }
 
@@ -72,13 +66,7 @@ void ProcessController::waitForTask()
 		MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
 
 		if (taskID == -1) finish_flag = true;
-		try {
-			evaluateTask(static_cast<Task>(taskID));
-		}
-		catch (const std::exception& exc)
-		{
-			finish_flag = true;
-		}
+		evaluateTask(static_cast<Task>(taskID));
 	}
 }
 

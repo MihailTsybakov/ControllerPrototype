@@ -63,7 +63,7 @@ void KSPSolveTask::printContext() const
 
 void KSPSolveTask::task()
 {
-	//throw ProcessTaskException("Test exception");
+	throw ProcessTaskException("Test exception");
 	PetscErrorCode ierr;
 	ierr = MPI_Barrier(communicator);
   
