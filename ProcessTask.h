@@ -23,9 +23,9 @@ class ShutdownTask : public ProcessTask
 public:
   void task() override
   {
-	  PetscErrorCode ierr = PetscFinalize(); //CHKERRQ(ierr);
-	  ierr = -1;
-	  if (ierr != 0) throw ProcessTaskException("Shutdown Error", ierr);
+	  //PetscErrorCode ierr = PetscFinalize(); //CHKERRQ(ierr);
+	  PetscErrorCode ierr = -1;
+	  if (ierr != 0) throw ShutdownException("Shutdown Error", ierr);
   }
 };
 
