@@ -12,8 +12,8 @@
 class ProcessController
 {
 private:
-	std::map<Task, ProcessTask*> tasksMap;
-	int mpiRank, mpiSize;
+	std::map<Task, ProcessTask*> tasks_map;
+	int MPI_rank, MPI_Size;
 	MPI_Comm communicator;
 
 	ProcessController();

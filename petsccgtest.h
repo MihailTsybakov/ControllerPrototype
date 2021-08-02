@@ -17,7 +17,7 @@ class KSPSolveTask : public ProcessTask
 {
 public:
   MPI_Comm communicator;
-  int MPIRank, MPISize;
+  int MPI_rank, MPI_size;
 
   void task() override;
   /// Synchronizes Matrix sizes between processes
@@ -30,10 +30,10 @@ public:
   //  -- Synchronized context --
   int matrixSize;
 
-  std::vector<int> locIASizes;
-  std::vector<int> locJASizes;
-  std::vector<int> locIAStarts;
-  std::vector<int> locJAStarts;
+  std::vector<int> loc_ia_sizes;
+  std::vector<int> loc_ja_sizes;
+  std::vector<int> loc_ia_starts;
+  std::vector<int> loc_ja_starts;
 
   //  -- Personal context --
   std::vector<int> ia;   // Root only
@@ -41,22 +41,22 @@ public:
   std::vector<double> a; // Root only
 
   Mat A;
-  Vec result, refResult, b;
+  Vec result, ref_result, b;
   KSP ksp; // Krylov solver
   PC pc;   // Preconditioner
   PetscInt iterations;
-  PetscScalar resNorm;
+  PetscScalar res_norm;
 
-  std::vector<int> locIA;
-  std::vector<int> locJA;
-  std::vector<double> locA;
+  std::vector<int> loc_ia;
+  std::vector<int> loc_ja;
+  std::vector<double> loc_a;
 
-  PetscInt* petscLocIA;
-  PetscInt* petscLocJA;
-  PetscScalar* petscLocA;
+  PetscInt* PETSc_loc_ia;
+  PetscInt* PETSc_loc_ja;
+  PetscScalar* PETSc_loc_a;
 
-  int locNum;
-  int locRows;
+  int loc_num;
+  int loc_rows;
 };
 
 #endif // PETSC_SOLVERS_TESTS
