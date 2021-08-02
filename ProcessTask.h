@@ -2,6 +2,7 @@
 #define PROCESS_TASK
 
 #include <petscksp.h>
+#include "exceptions.h"
 
 enum class Task : int
 {
