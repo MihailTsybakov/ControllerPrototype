@@ -9,6 +9,7 @@ set(ControllerPrototype_H
 	processcontroller.h
 	solvertest.h
 	petsccgtest.h
+	exceptions.h
 )
 
 set(ControllerPrototype_SRC 
