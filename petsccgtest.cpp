@@ -63,23 +63,24 @@ void KSPSolveTask::printContext() const
 
 void KSPSolveTask::task()
 {
-	MPI_Barrier(communicator);
+	PetscErrorCode ierr;
+	ierr = MPI_Barrier(communicator);
   
-  ProcessController* mpiController = ProcessController::getInstance();
-  MPIRank = mpiController->MPIRank();
-  MPISize = mpiController->MPISize();
-  communicator = mpiController->getCommunicator();
+	ProcessController* mpiController = ProcessController::getInstance();
+	MPIRank = mpiController->MPIRank();
+	MPISize = mpiController->MPISize();
+	communicator = mpiController->getCommunicator();
 
 	syncMatrixSize();
 	
-	MPI_Barrier(communicator);
+	ierr = MPI_Barrier(communicator);
 
 	// Scattering Ia:
 	locRows = localSize(matrixSize, MPIRank, MPISize);
 	locIA.resize(locRows + 1);
 	locIA[0] = 0;
 	
-	MPI_Barrier(communicator);
+	ierr = MPI_Barrier(communicator);
 	auto scatter_start = cr::system_clock::now();
 
 	MPI_Scatterv(ia.data(), locIASizes.data(), locIAStarts.data(), MPI_INT,
@@ -96,82 +97,100 @@ void KSPSolveTask::task()
 	MPI_Scatterv(a.data(), locJASizes.data(), locJAStarts.data(), MPI_DOUBLE,
 		locA.data(), locNum, MPI_DOUBLE, 0, communicator);
 
-	MPI_Barrier(communicator);
+	ierr = MPI_Barrier(communicator);
 	auto scatter_end = cr::system_clock::now();
 
 	int time = cr::duration_cast<cr::milliseconds>(scatter_end - scatter_start).count();
 	if (!MPIRank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
 
 	// Converting data
-	PetscMalloc(locIA.size() * sizeof(PetscInt), &petscLocIA);
-	PetscMalloc(locJA.size() * sizeof(PetscInt), &petscLocJA);
-	PetscMalloc(locA.size() * sizeof(PetscScalar), &petscLocA);
+	ierr = PetscMalloc(locIA.size() * sizeof(PetscInt), &petscLocIA);
+	ierr = PetscMalloc(locJA.size() * sizeof(PetscInt), &petscLocJA);
+	ierr = PetscMalloc(locA.size() * sizeof(PetscScalar), &petscLocA);
+
+	if (ierr != 0) throw ProcessTaskException("Error occured in PetscMalloc.", ierr);
+
 	for (size_t i = 0; i < locIA.size(); ++i) petscLocIA[i] = locIA[i];
 	for (size_t i = 0; i < locJA.size(); ++i) petscLocJA[i] = locJA[i];
 	for (size_t i = 0; i < locA.size(); ++i) petscLocA[i] = locA[i];
 
-	MatCreateMPIAIJWithArrays(communicator, locRows, PETSC_DECIDE,
+	ierr = MatCreateMPIAIJWithArrays(communicator, locRows, PETSC_DECIDE,
 		PETSC_DETERMINE, matrixSize, petscLocIA, petscLocJA,
 		petscLocA, &A);
 
-	PetscFree(petscLocA);
-	PetscFree(petscLocIA);
-	PetscFree(petscLocJA);
+	if (ierr != 0) throw ProcessTaskException("Error occured in MatCreateMPIAIWithArrays.", ierr);
 
-	MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-	MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+	ierr = PetscFree(petscLocA);
+	ierr = PetscFree(petscLocIA);
+	ierr = PetscFree(petscLocJA);
 
-	MatCreateVecs(A, &b, NULL);
-	VecDuplicate(b, &result);
-	VecDuplicate(b, &refResult);
-	VecSet(result, 0.0);
-	VecSet(refResult, 1.0);
-	MatMult(A, refResult, b);
+	if (ierr != 0) throw ProcessTaskException("Error occured while tried to release memory.", ierr);
 
-	KSPCreate(communicator, &ksp);
-	KSPGetPC(ksp, &pc);
-	PCSetType(pc, PCJACOBI);
-	KSPMonitorSet(ksp, MyKSPMonitor, NULL, 0);
-	KSPSetOperators(ksp, A, A);
-	KSPSetType(ksp, KSPCG);
+	ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+	ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+
+	if (ierr != 0) throw ProcessTaskException("Error: MatAssembly failed.", ierr);
+
+	ierr = MatCreateVecs(A, &b, NULL);
+	ierr = VecDuplicate(b, &result);
+	ierr = VecDuplicate(b, &refResult);
+	ierr = VecSet(result, 0.0);
+	ierr = VecSet(refResult, 1.0);
+	ierr = MatMult(A, refResult, b);
+
+	if (ierr != 0) throw ProcessTaskException("Error occured while tried to form vectors.", ierr);
+
+	ierr = KSPCreate(communicator, &ksp);
+	ierr = KSPGetPC(ksp, &pc);
+	ierr = PCSetType(pc, PCJACOBI);
+	ierr = KSPMonitorSet(ksp, MyKSPMonitor, NULL, 0);
+	ierr = KSPSetOperators(ksp, A, A);
+	ierr = KSPSetType(ksp, KSPCG);
 //	KSPSetType(ksp, KSPGMRES);
-	KSPSetTolerances(ksp, 1e-8, PETSC_DEFAULT,
+	ierr = KSPSetTolerances(ksp, 1e-8, PETSC_DEFAULT,
 		PETSC_DEFAULT, 1'000);
-	KSPSetFromOptions(ksp);
+	ierr = KSPSetFromOptions(ksp);
 
 	// These calls are optional enable more precise profiling, 
 	// since both will be called within KSPSolve() if they 
 	// haven't been called already.
-	KSPSetUp(ksp);
+	ierr = KSPSetUp(ksp);
+
+	if (ierr != 0) throw ProcessTaskException("Error: Solver setup failed.", ierr);
 
 	auto solve_start = cr::system_clock::now();
-	KSPSolve(ksp, b, result);
+	ierr = KSPSolve(ksp, b, result);
 	auto solve_end = cr::system_clock::now();
 	time = cr::duration_cast<cr::milliseconds>(solve_end - solve_start).count();
 
+	if (ierr != 0) throw ProcessTaskException("Error: solving failed.", ierr);
 	if (!MPIRank) std::cout << " Solve elapsed: ~" << time << " ms" << std::endl;
 
 	// Convergence check
 	KSPConvergedReason reason;
-	KSPGetConvergedReason(ksp, &reason);
+	ierr = KSPGetConvergedReason(ksp, &reason);
 	if (reason < 0) {
 		std::cout << "Divergence detected: " << reason << std::endl;
 	}
 	else
 	{
 		PetscInt its;
-		KSPGetIterationNumber(ksp, &its);
+		ierr = KSPGetIterationNumber(ksp, &its);
 		PetscScalar res_norm_;
-		KSPGetResidualNorm(ksp, &res_norm_);
+		ierr = KSPGetResidualNorm(ksp, &res_norm_);
 		iterations = its;
 		resNorm = res_norm_;
 	}
 
-	KSPDestroy(&ksp);
-	MatDestroy(&A);
-	VecDestroy(&refResult);
-	VecDestroy(&result);
-	VecDestroy(&b);
+	if (ierr != 0) throw ProcessTaskException("Error: convergence check failed.", ierr);
+
+	ierr = KSPDestroy(&ksp);
+	ierr = MatDestroy(&A);
+	ierr = VecDestroy(&refResult);
+	ierr = VecDestroy(&result);
+	ierr = VecDestroy(&b);
+
+	if (ierr != 0) throw ProcessTaskException("Error: Releasing petsc memory failed.", ierr);
 }
 
 int PETScCGTest::testSpecific()
@@ -220,9 +239,14 @@ int PETScCGTest::testSpecific()
 	}
 
 	// Setting and Invoking solver:
-	start = cr::system_clock::now();
-	pc->evaluateTask(Task::KSPSolve);
-	end = cr::system_clock::now();
+	try
+	{
+		pc->evaluateTask(Task::KSPSolve);
+	}
+	catch (const std::exception& exc)
+	{
+		std::cerr << " While tried to solve system, exception occured: \"" << exc.what() << "\"." << std::endl;
+	}
 
 	std::cout << " Iterations taken: " << solveTask->iterations << std::endl;
 	std::cout << " Residual norm: " << solveTask->resNorm << std::endl;
