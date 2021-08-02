@@ -4,34 +4,20 @@
 #include <exception>
 #include <string>
 
-class ProcessControllerException : public std::runtime_error
-{
-private:
-	std::string error_msg;
-	int error_code;
-public:
-	ProcessControllerException(std::string error_message, int err_code) : std::runtime_error(error_message)
-	{
-		error_msg = error_message;
-		error_code = err_code;
-	}
-	int errCode() const noexcept { return error_code; }
-	const char* what() const noexcept override { return error_msg.c_str(); }
+#define DECLARE_EXCEPTION(ClassName, BaseClassName) \
+class ClassName: public BaseClassName { \
+private: \
+  int err_code; \
+public: \
+  ClassName(const char* msg): BaseClassName(msg) {} \
+  ClassName(const char* msg, int err_code): BaseClassName(msg), err_code(err_code) {} \
+  ClassName(const std::string& msg): BaseClassName(msg.c_str()) {} \
+  ClassName(const std::string& msg, int err_code): BaseClassName(msg.c_str()), err_code(err_code) {} \
+   \
+  int errCode() const noexcept { return err_code; } \
 };
 
-class ProcessTaskException : public std::runtime_error
-{
-private:
-	std::string error_msg;
-	int error_code;
-public:
-	ProcessTaskException(std::string error_message, int err_code) : std::runtime_error(error_message)
-	{
-		error_msg = error_message;
-		error_code = err_code;
-	}
-	int errCode() const noexcept { return error_code; }
-	const char* what() const noexcept override { return error_msg.c_str(); }
-};
+DECLARE_EXCEPTION(ProcessControllerException, std::runtime_error)
+DECLARE_EXCEPTION(ProcessTaskException, std::runtime_error)
 
 #endif//EXCEPTIONS
