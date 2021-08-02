@@ -63,6 +63,7 @@ void KSPSolveTask::printContext() const
 
 void KSPSolveTask::task()
 {
+	throw ProcessTaskException("Test exception");
 	PetscErrorCode ierr;
 	ierr = MPI_Barrier(communicator);
   
@@ -224,14 +225,15 @@ int PETScCGTest::testSpecific()
 	}
 
 	// Setting and Invoking solver:
-	try
-	{
+	try {
 		pc->evaluateTask(Task::KSPSolve);
 	}
 	catch (const std::exception& exc)
 	{
-		std::cerr << " While tried to solve system, exception occured: \"" << exc.what() << "\"." << std::endl;
+		std::cout << exc.what() << std::endl;
+		return -1;
 	}
+	
 
 	std::cout << " Iterations taken: " << solveTask->iterations << std::endl;
 	std::cout << " Residual norm: " << solveTask->res_norm << std::endl;
