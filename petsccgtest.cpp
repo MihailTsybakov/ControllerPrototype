@@ -2,6 +2,7 @@
 #include "petsccgtest.h"
 
 #include <petscksp.h>
+#include <csignal>
 
 using namespace std;
 
@@ -69,10 +70,13 @@ void KSPSolveTask::task()
 
 int KSPSolveTask::_task()
 {
-	PetscErrorCode ierr;
-	ierr = PetscInitialize(0, nullptr, (char*)0, (char*)0); CHKERRQ(ierr);
+	auto mpiController = ProcessController::getInstance();
 
-	ProcessController* mpiController = ProcessController::getInstance();
+	PetscErrorCode ierr;
+
+	ierr = PetscInitialize(0, nullptr, (char*)0, (char*)0); CHKERRQ(ierr);
+	ierr = PetscPopSignalHandler();							CHKERRQ(ierr);
+
 	MPI_rank = mpiController->MPIRank();
 	MPI_size = mpiController->MPISize();
 	communicator = mpiController->getCommunicator();
@@ -108,8 +112,6 @@ int KSPSolveTask::_task()
 
 	int time = cr::duration_cast<cr::milliseconds>(scatter_end - scatter_start).count();
 	if (!MPI_rank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
-
-	if (MPI_rank == 0) { ierr = 1; CHKERRQ(ierr); }
 
 	// Converting data
 	ierr = PetscMalloc(loc_ia.size() * sizeof(PetscInt), &PETSc_loc_ia);	CHKERRQ(ierr);
@@ -184,13 +186,14 @@ int KSPSolveTask::_task()
 	ierr = VecDestroy(&b);			CHKERRQ(ierr);
 	
 	ierr = PetscFinalize();			CHKERRQ(ierr);
+	return ierr;
 }
 
 int PETScCGTest::testSpecific()
 {
-	ProcessController* pc = ProcessController::getInstance();
+	auto pc = ProcessController::getInstance();
 
-	KSPSolveTask* solveTask = dynamic_cast<KSPSolveTask*>(pc->getTask(Task::KSPSolve));
+	auto solveTask = dynamic_pointer_cast<KSPSolveTask>(pc->getTask(Task::KSPSolve));
 	
 	// Configuring settings
 	solveTask->a = a;
