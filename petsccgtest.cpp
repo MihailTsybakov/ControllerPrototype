@@ -61,12 +61,17 @@ void KSPSolveTask::printContext() const
 	std::cout << std::endl;
 }
 
-int KSPSolveTask::task()
+void KSPSolveTask::task()
 {
-	throw ProcessTaskException("Test exception");
+	PetscErrorCode ierr = _task();
+	if (ierr != 0) throw ProcessTaskException("Error occured in _task().", ierr);
+}
+
+int KSPSolveTask::_task()
+{
 	PetscErrorCode ierr;
-	ierr = MPI_Barrier(communicator);
-  
+	ierr = PetscInitialize(0, nullptr, (char*)0, (char*)0); CHKERRQ(ierr);
+
 	ProcessController* mpiController = ProcessController::getInstance();
 	MPI_rank = mpiController->MPIRank();
 	MPI_size = mpiController->MPISize();
@@ -103,6 +108,8 @@ int KSPSolveTask::task()
 
 	int time = cr::duration_cast<cr::milliseconds>(scatter_end - scatter_start).count();
 	if (!MPI_rank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
+
+	if (MPI_rank == 0) { ierr = 1; CHKERRQ(ierr); }
 
 	// Converting data
 	ierr = PetscMalloc(loc_ia.size() * sizeof(PetscInt), &PETSc_loc_ia);	CHKERRQ(ierr);
@@ -175,8 +182,8 @@ int KSPSolveTask::task()
 	ierr = VecDestroy(&ref_result); CHKERRQ(ierr);
 	ierr = VecDestroy(&result);		CHKERRQ(ierr);
 	ierr = VecDestroy(&b);			CHKERRQ(ierr);
-
-	if (ierr != 0) throw ProcessTaskException("KSP Solving failed.", ierr);
+	
+	ierr = PetscFinalize();			CHKERRQ(ierr);
 }
 
 int PETScCGTest::testSpecific()
@@ -227,7 +234,6 @@ int PETScCGTest::testSpecific()
 	// Setting and Invoking solver:
 
 	pc->evaluateTask(Task::KSPSolve);
-
 	
 
 	std::cout << " Iterations taken: " << solveTask->iterations << std::endl;
