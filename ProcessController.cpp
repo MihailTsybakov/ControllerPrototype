@@ -1,5 +1,6 @@
 #include "processcontroller.h"
 #include "petsccgtest.h"
+#include "process.h"
 
 int ProcessController::MPIRank() const
 {
@@ -19,9 +20,21 @@ MPI_Comm ProcessController::getCommunicator() const
 ProcessController::ProcessController()
 {
 	communicator = MPI_COMM_WORLD;
-	PetscInitialize(0, nullptr, (char*)0, (char*)0);
+	//PetscInitialize(0, nullptr, (char*)0, (char*)0);
+	MPI_Init(0, nullptr);
 	MPI_Comm_rank(communicator, &MPI_rank);
 	MPI_Comm_size(communicator, &MPI_Size);
+
+#ifdef _DEBUG
+	int my_pid = _getpid();
+	std::cout << " Rank [" << MPI_rank << "]: My pid = " << my_pid << std::endl;
+	if (!MPI_rank)
+	{
+		std::cout << "Press any key to continue..." << std::endl;
+		getchar();
+	}
+	MPI_Barrier(communicator);
+#endif
 
 	tasks_map[Task::KSPSolve] = new KSPSolveTask;
 	tasks_map[Task::Shutdown] = new ShutdownTask;
@@ -41,7 +54,7 @@ void ProcessController::evaluateTask(Task taskID)
 	// Checking taskID
 	if (tasks_map.find(taskID) == tasks_map.end())
 	{
-		std::cout << " Rank [" << MPI_rank << "]: Get unknown task (Integer Id = " 
+		std::cout << " Rank [" << MPI_rank << "]: Got unknown task (Integer Id = " 
               << static_cast<int>(taskID) << "). Shutting down..." << std::endl;
 		tasks_map[Task::Shutdown]->task();
 	}
