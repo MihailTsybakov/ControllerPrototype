@@ -17,8 +17,8 @@ public: \
   int errCode() const noexcept { return err_code; } \
 };
 
-DECLARE_EXCEPTION(ProcessControllerException, std::runtime_error)
+
 DECLARE_EXCEPTION(ProcessTaskException, std::runtime_error)
-DECLARE_EXCEPTION(ShutdownException, std::runtime_error)
+
 
 #endif//EXCEPTIONS
