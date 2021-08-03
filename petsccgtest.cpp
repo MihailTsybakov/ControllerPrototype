@@ -2,6 +2,7 @@
 #include "petsccgtest.h"
 
 #include <petscksp.h>
+#include <csignal>
 
 using namespace std;
 
@@ -63,10 +64,19 @@ void KSPSolveTask::printContext() const
 
 void KSPSolveTask::task()
 {
+	PetscErrorCode ierr = _task();
+	if (ierr != 0) throw ProcessTaskException("Error occured in _task().", ierr);
+}
+
+int KSPSolveTask::_task()
+{
+	auto mpiController = ProcessController::getInstance();
+
 	PetscErrorCode ierr;
-	ierr = MPI_Barrier(communicator);
-  
-	ProcessController* mpiController = ProcessController::getInstance();
+
+	ierr = PetscInitialize(0, nullptr, (char*)0, (char*)0); CHKERRQ(ierr);
+	ierr = PetscPopSignalHandler();							CHKERRQ(ierr);
+
 	MPI_rank = mpiController->MPIRank();
 	MPI_size = mpiController->MPISize();
 	communicator = mpiController->getCommunicator();
@@ -104,9 +114,9 @@ void KSPSolveTask::task()
 	if (!MPI_rank) std::cout << " Scatter elapsed: ~" << time << " ms" << std::endl;
 
 	// Converting data
-	ierr = PetscMalloc(loc_ia.size() * sizeof(PetscInt), &PETSc_loc_ia);
-	ierr = PetscMalloc(loc_ja.size() * sizeof(PetscInt), &PETSc_loc_ja);
-	ierr = PetscMalloc(loc_a.size() * sizeof(PetscScalar), &PETSc_loc_a);
+	ierr = PetscMalloc(loc_ia.size() * sizeof(PetscInt), &PETSc_loc_ia);	CHKERRQ(ierr);
+	ierr = PetscMalloc(loc_ja.size() * sizeof(PetscInt), &PETSc_loc_ja);	CHKERRQ(ierr);
+	ierr = PetscMalloc(loc_a.size() * sizeof(PetscScalar), &PETSc_loc_a);	CHKERRQ(ierr);
 
 	for (size_t i = 0; i < loc_ia.size(); ++i) PETSc_loc_ia[i] = loc_ia[i];
 	for (size_t i = 0; i < loc_ja.size(); ++i) PETSc_loc_ja[i] = loc_ja[i];
@@ -114,40 +124,40 @@ void KSPSolveTask::task()
 
 	ierr = MatCreateMPIAIJWithArrays(communicator, loc_rows, PETSC_DECIDE,
 		PETSC_DETERMINE, matrixSize, PETSc_loc_ia, PETSc_loc_ja,
-		PETSc_loc_a, &A);
+		PETSc_loc_a, &A);			CHKERRQ(ierr);
 
-	ierr = PetscFree(PETSc_loc_a);
-	ierr = PetscFree(PETSc_loc_ia);
-	ierr = PetscFree(PETSc_loc_ja);
+	ierr = PetscFree(PETSc_loc_a);	CHKERRQ(ierr);
+	ierr = PetscFree(PETSc_loc_ia); CHKERRQ(ierr);
+	ierr = PetscFree(PETSc_loc_ja); CHKERRQ(ierr);
 
-	ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-	ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+	ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);		CHKERRQ(ierr);
+	ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);		CHKERRQ(ierr);
 
-	ierr = MatCreateVecs(A, &b, NULL);
-	ierr = VecDuplicate(b, &result);
-	ierr = VecDuplicate(b, &ref_result);
-	ierr = VecSet(result, 0.0);
-	ierr = VecSet(ref_result, 1.0);
-	ierr = MatMult(A, ref_result, b);
+	ierr = MatCreateVecs(A, &b, NULL);					CHKERRQ(ierr);
+	ierr = VecDuplicate(b, &result);					CHKERRQ(ierr);
+	ierr = VecDuplicate(b, &ref_result);				CHKERRQ(ierr);
+	ierr = VecSet(result, 0.0);							CHKERRQ(ierr);
+	ierr = VecSet(ref_result, 1.0);						CHKERRQ(ierr);
+	ierr = MatMult(A, ref_result, b);					CHKERRQ(ierr);
 
-	ierr = KSPCreate(communicator, &ksp);
-	ierr = KSPGetPC(ksp, &pc);
-	ierr = PCSetType(pc, PCJACOBI);
-	ierr = KSPMonitorSet(ksp, MyKSPMonitor, NULL, 0);
-	ierr = KSPSetOperators(ksp, A, A);
-	ierr = KSPSetType(ksp, KSPCG);
+	ierr = KSPCreate(communicator, &ksp);				CHKERRQ(ierr);
+	ierr = KSPGetPC(ksp, &pc);							CHKERRQ(ierr);
+	ierr = PCSetType(pc, PCJACOBI);						CHKERRQ(ierr);
+	ierr = KSPMonitorSet(ksp, MyKSPMonitor, NULL, 0);   CHKERRQ(ierr);
+	ierr = KSPSetOperators(ksp, A, A);					CHKERRQ(ierr);
+	ierr = KSPSetType(ksp, KSPCG);						CHKERRQ(ierr);
 //	KSPSetType(ksp, KSPGMRES);
 	ierr = KSPSetTolerances(ksp, 1e-8, PETSC_DEFAULT,
-		PETSC_DEFAULT, 1'000);
-	ierr = KSPSetFromOptions(ksp);
+		PETSC_DEFAULT, 1'000);							CHKERRQ(ierr);
+	ierr = KSPSetFromOptions(ksp);						CHKERRQ(ierr);
 
 	// These calls are optional enable more precise profiling, 
 	// since both will be called within KSPSolve() if they 
 	// haven't been called already.
-	ierr = KSPSetUp(ksp);
+	ierr = KSPSetUp(ksp); CHKERRQ(ierr);
 
 	auto solve_start = cr::system_clock::now();
-	ierr = KSPSolve(ksp, b, result);
+	ierr = KSPSolve(ksp, b, result); CHKERRQ(ierr);
 	auto solve_end = cr::system_clock::now();
 	time = cr::duration_cast<cr::milliseconds>(solve_end - solve_start).count();
 
@@ -155,34 +165,35 @@ void KSPSolveTask::task()
 
 	// Convergence check
 	KSPConvergedReason reason;
-	ierr = KSPGetConvergedReason(ksp, &reason);
+	ierr = KSPGetConvergedReason(ksp, &reason); CHKERRQ(ierr);
 	if (reason < 0) {
 		std::cout << "Divergence detected: " << reason << std::endl;
 	}
 	else
 	{
 		PetscInt its;
-		ierr = KSPGetIterationNumber(ksp, &its);
+		ierr = KSPGetIterationNumber(ksp, &its);	CHKERRQ(ierr);
 		PetscScalar res_norm_;
-		ierr = KSPGetResidualNorm(ksp, &res_norm_);
+		ierr = KSPGetResidualNorm(ksp, &res_norm_); CHKERRQ(ierr);
 		iterations = its;
 		res_norm = res_norm_;
 	}
 
-	ierr = KSPDestroy(&ksp);
-	ierr = MatDestroy(&A);
-	ierr = VecDestroy(&ref_result);
-	ierr = VecDestroy(&result);
-	ierr = VecDestroy(&b);
-
-	if (ierr != 0) throw ProcessTaskException("KSP Solving failed.", ierr);
+	ierr = KSPDestroy(&ksp);		CHKERRQ(ierr);
+	ierr = MatDestroy(&A);			CHKERRQ(ierr);
+	ierr = VecDestroy(&ref_result); CHKERRQ(ierr);
+	ierr = VecDestroy(&result);		CHKERRQ(ierr);
+	ierr = VecDestroy(&b);			CHKERRQ(ierr);
+	
+	ierr = PetscFinalize();			CHKERRQ(ierr);
+	return ierr;
 }
 
 int PETScCGTest::testSpecific()
 {
-	ProcessController* pc = ProcessController::getInstance();
+	auto pc = ProcessController::getInstance();
 
-	KSPSolveTask* solveTask = dynamic_cast<KSPSolveTask*>(pc->getTask(Task::KSPSolve));
+	auto solveTask = dynamic_pointer_cast<KSPSolveTask>(pc->getTask(Task::KSPSolve));
 	
 	// Configuring settings
 	solveTask->a = a;
@@ -224,14 +235,9 @@ int PETScCGTest::testSpecific()
 	}
 
 	// Setting and Invoking solver:
-	try
-	{
-		pc->evaluateTask(Task::KSPSolve);
-	}
-	catch (const std::exception& exc)
-	{
-		std::cerr << " While tried to solve system, exception occured: \"" << exc.what() << "\"." << std::endl;
-	}
+
+	pc->evaluateTask(Task::KSPSolve);
+	
 
 	std::cout << " Iterations taken: " << solveTask->iterations << std::endl;
 	std::cout << " Residual norm: " << solveTask->res_norm << std::endl;

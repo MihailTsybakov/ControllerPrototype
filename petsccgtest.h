@@ -19,6 +19,7 @@ public:
   MPI_Comm communicator;
   int MPI_rank, MPI_size;
 
+  int _task();
   void task() override;
   /// Synchronizes Matrix sizes between processes
   void syncMatrixSize();

@@ -8,18 +8,20 @@
 #include <map>
 #include <iostream>
 #include <vector>
+#include <memory>
 
 class ProcessController
 {
 private:
-	std::map<Task, ProcessTask*> tasks_map;
-	int MPI_rank, MPI_Size;
+	std::map<Task, std::shared_ptr<ProcessTask>> tasks_map;
+	int MPI_rank, MPI_size;
 	MPI_Comm communicator;
 
 	ProcessController();
-	static ProcessController* _instance;
-
+	static std::shared_ptr<ProcessController> _instance;
 public:
+	void initialize();
+	void finalize();
 
 	ProcessController(ProcessController&) = delete;
 	void operator=(const ProcessController&) = delete;
@@ -30,9 +32,9 @@ public:
 
 	void waitForTask();
 	void evaluateTask(Task taskID);
-	ProcessTask* getTask(Task taskID);
+	std::shared_ptr<ProcessTask> getTask(Task taskID);
 
-	static ProcessController* getInstance();
+	static std::shared_ptr<ProcessController> getInstance();
 	~ProcessController();
 };
 

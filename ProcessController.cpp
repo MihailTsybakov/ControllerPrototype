@@ -1,5 +1,6 @@
 #include "processcontroller.h"
 #include "petsccgtest.h"
+#include "process.h"
 
 int ProcessController::MPIRank() const
 {
@@ -8,7 +9,7 @@ int ProcessController::MPIRank() const
 
 int ProcessController::MPISize() const
 {
-	return MPI_Size;
+	return MPI_size;
 }
 
 MPI_Comm ProcessController::getCommunicator() const
@@ -19,19 +20,26 @@ MPI_Comm ProcessController::getCommunicator() const
 ProcessController::ProcessController()
 {
 	communicator = MPI_COMM_WORLD;
-	PetscInitialize(0, nullptr, (char*)0, (char*)0);
-	MPI_Comm_rank(communicator, &MPI_rank);
-	MPI_Comm_size(communicator, &MPI_Size);
+	MPI_Init(0, nullptr);                   
+	MPI_Comm_rank(communicator, &MPI_rank); 
+	MPI_Comm_size(communicator, &MPI_size); 
 
-	tasks_map[Task::KSPSolve] = new KSPSolveTask;
-	tasks_map[Task::Shutdown] = new ShutdownTask;
+#ifdef _DEBUG
+	int my_pid = _getpid();
+	std::cout << " Rank [" << MPI_rank << "]: My pid = " << my_pid << std::endl;
+	if (!MPI_rank)
+	{
+		std::cout << " Press any key to continue..." << std::endl;
+		getchar();
+	}
+	MPI_Barrier(communicator);
+#endif
+
+	tasks_map[Task::KSPSolve] = std::make_shared<KSPSolveTask>();
+	tasks_map[Task::Shutdown] = std::make_shared<ShutdownTask>();
 }
 
-ProcessController::~ProcessController()
-{
-	if (_instance != nullptr) delete _instance;
-	for (auto pair : tasks_map) delete pair.second;
-}
+ProcessController::~ProcessController(){}
 
 void ProcessController::evaluateTask(Task taskID)
 {
@@ -39,41 +47,67 @@ void ProcessController::evaluateTask(Task taskID)
 	if (!MPI_rank) MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
 
 	// Checking taskID
-	if (tasks_map.find(taskID) == tasks_map.end())
+	try
 	{
-		std::cout << " Rank [" << MPI_rank << "]: Get unknown task (Integer Id = " 
-              << static_cast<int>(taskID) << "). Shutting down..." << std::endl;
-		tasks_map[Task::Shutdown]->task();
+		if (tasks_map.find(taskID) == tasks_map.end())
+		{
+			std::cout << " Rank [" << MPI_rank << "]: Got unknown task (Integer Id = "
+				<< static_cast<int>(taskID) << ")." << std::endl;
+			throw ProcessTaskException("Error: unknown taskID.");
+		}
+		tasks_map[taskID]->task();
 	}
-	//std::cout << " Rank [" << mpiRank << "]: evaluating task " << static_cast<int>(taskID) << std::endl;
-	tasks_map[taskID]->task();
+	catch (const std::exception& exc)
+	{
+		std::cout << " Rank [" << MPI_rank << "]: caught an exception: \"" << exc.what() << "\"." << std::endl;
+		std::cout << " Rank [" << MPI_rank << "]: Calling MPI_Abort()." << std::endl;
+		MPI_Abort(communicator, MPI_ERR_OTHER);
+	}
+	catch (...)
+	{
+		std::cout << " Rank [" << MPI_rank << "]: caught an exception." << std::endl;
+		std::cout << " Rank [" << MPI_rank << "]: Calling MPI_Abort()." << std::endl;
+		MPI_Abort(communicator, MPI_ERR_OTHER);
+	}
 }
 
 void ProcessController::waitForTask()
 {
-	bool finishFlag = false;
-	while (!finishFlag)
+	bool finish_flag = false;
+	while (!finish_flag)
 	{
 		int taskID;
 		MPI_Bcast(&taskID, 1, MPI_INT, 0, communicator);
 
-		if (taskID == -1) finishFlag = true;
+		if (taskID == -1) finish_flag = true;
 		evaluateTask(static_cast<Task>(taskID));
 	}
+	exit(0);
 }
 
-ProcessTask* ProcessController::getTask(Task taskID)
+std::shared_ptr<ProcessTask> ProcessController::getTask(Task taskID)
 {
 	return tasks_map[taskID];
 }
 
-ProcessController* ProcessController::_instance = nullptr;
+std::shared_ptr<ProcessController> ProcessController::_instance = std::shared_ptr<ProcessController>(nullptr);
 
-ProcessController* ProcessController::getInstance()
+std::shared_ptr<ProcessController> ProcessController::getInstance()
 {
-	if (_instance == nullptr)
+	if (_instance.get() == nullptr)
 	{
-		_instance = new ProcessController;
+		_instance = std::shared_ptr<ProcessController>(new ProcessController);
 	}
 	return _instance;
+}
+
+
+void ProcessController::initialize()
+{
+	if (MPI_rank != 0) waitForTask();
+}
+
+void ProcessController::finalize()
+{
+	evaluateTask(Task::Shutdown);
 }
