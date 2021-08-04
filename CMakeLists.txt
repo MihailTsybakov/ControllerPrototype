@@ -10,6 +10,7 @@ set(ControllerPrototype_H
 	solvertest.h
 	petsccgtest.h
 	exceptions.h
+	signalhandler.h
 )
 
 set(ControllerPrototype_SRC 
@@ -17,6 +18,7 @@ set(ControllerPrototype_SRC
 	processcontroller.cpp
 	solvertest.cpp
 	petsccgtest.cpp
+	signalhandler.cpp
 )
 
 find_package(MPILibraries REQUIRED)
