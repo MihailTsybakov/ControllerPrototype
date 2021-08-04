@@ -70,15 +70,18 @@ void KSPSolveTask::task()
 
 int KSPSolveTask::_task()
 {
+
 	auto mpiController = ProcessController::getInstance();
 
 	PetscErrorCode ierr;
-
+	
 	ierr = PetscInitialize(0, nullptr, (char*)0, (char*)0); CHKERRQ(ierr);
-	ierr = PetscPopSignalHandler();							CHKERRQ(ierr);
+	ierr = PetscPopSignalHandler();
+	// Known Issue: PetscPopSignalHandler drops signal handlers to SIG_DEF, setting up signal handlers again is needed
+	PushSignalHandler(false);
 
 	MPI_rank = mpiController->MPIRank();
-	MPI_size = mpiController->MPISize();
+	MPI_size = mpiController->MPISize();		     
 	communicator = mpiController->getCommunicator();
 
 	syncMatrixSize();
@@ -106,6 +109,8 @@ int KSPSolveTask::_task()
 	loc_a.resize(loc_num);
 	MPI_Scatterv(a.data(), loc_ja_sizes.data(), loc_ja_starts.data(), MPI_DOUBLE,
 		loc_a.data(), loc_num, MPI_DOUBLE, 0, communicator);
+
+	if (mpiController->MPIRank() == 1) std::raise(SIGSEGV);
 
 	ierr = MPI_Barrier(communicator);
 	auto scatter_end = cr::system_clock::now();
@@ -186,6 +191,7 @@ int KSPSolveTask::_task()
 	ierr = VecDestroy(&b);			CHKERRQ(ierr);
 	
 	ierr = PetscFinalize();			CHKERRQ(ierr);
+	PopSignalHandler();
 	return ierr;
 }
 
