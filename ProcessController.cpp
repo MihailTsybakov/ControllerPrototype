@@ -56,13 +56,13 @@ void ProcessController::evaluateTask(Task taskID)
 			throw ProcessTaskException("Error: unknown taskID.");
 		}
 
-    namespace pcsh = ProcessControllerSignalHandler;
+		namespace pcsh = ProcessControllerSignalHandler;
 		pcsh::error_handler_MPI_rank = MPI_rank;
 		pcsh::pushSignalHandler();
 
 		tasks_map[taskID]->task();
 
-    pcsh::popSignalHandler();
+		pcsh::popSignalHandler();
 	}
 	catch (const std::exception& exc)
 	{
