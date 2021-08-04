@@ -77,8 +77,9 @@ int KSPSolveTask::_task()
 	
 	ierr = PetscInitialize(0, nullptr, (char*)0, (char*)0); CHKERRQ(ierr);
 	ierr = PetscPopSignalHandler();
-	// Known Issue: PetscPopSignalHandler drops signal handlers to SIG_DEF, setting up signal handlers again is needed
-	PushSignalHandler(false);
+	// Known Issue: PetscPopSignalHandler drops signal handlers to SIG_DEF
+  // setting up signal handlers again is needed
+	ProcessControllerSignalHandler::pushSignalHandler(false);
 
 	MPI_rank = mpiController->MPIRank();
 	MPI_size = mpiController->MPISize();		     
@@ -191,7 +192,6 @@ int KSPSolveTask::_task()
 	ierr = VecDestroy(&b);			CHKERRQ(ierr);
 	
 	ierr = PetscFinalize();			CHKERRQ(ierr);
-	PopSignalHandler();
 	return ierr;
 }
 

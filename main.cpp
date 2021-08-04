@@ -13,7 +13,6 @@ int main(int argc, char* argv[])
 {
 
 	auto pc = ProcessController::getInstance();
-	//std::raise(SIGSEGV);
 	pc->initialize();
 
 	std::unique_ptr<SolverTest> test4k1 = std::make_unique<PETScCGTest>();
