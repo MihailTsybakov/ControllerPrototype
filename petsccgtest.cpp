@@ -111,8 +111,6 @@ int KSPSolveTask::_task()
 	MPI_Scatterv(a.data(), loc_ja_sizes.data(), loc_ja_starts.data(), MPI_DOUBLE,
 		loc_a.data(), loc_num, MPI_DOUBLE, 0, communicator);
 
-	if (mpiController->MPIRank() == 1) std::raise(SIGSEGV);
-
 	ierr = MPI_Barrier(communicator);
 	auto scatter_end = cr::system_clock::now();
 
