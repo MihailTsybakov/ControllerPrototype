@@ -3,6 +3,7 @@
 
 #include "mpi.h"
 #include "ProcessTask.h"
+#include "signalhandler.h"
 
 #include <petscksp.h>
 #include <map>

@@ -7,9 +7,11 @@
 #include "solvertest.h"
 #include "petsccgtest.h"
 #include "process.h"
+#include <csignal>
 
 int main(int argc, char* argv[])
 {
+
 	auto pc = ProcessController::getInstance();
 	pc->initialize();
 
@@ -17,7 +19,6 @@ int main(int argc, char* argv[])
 	test4k1->A_name = "TestHomoStress4k.mtx";
 	test4k1->file_format = MatrixFileFormat::MTX;
 	test4k1->test();
-
 
 	pc->finalize();
 
